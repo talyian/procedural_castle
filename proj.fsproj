@@ -1,0 +1,18 @@
+<Project xmlns='http://schemas.microsoft.com/developer/msbuild/2003' ToolsVersion='4.0'>
+  <PropertyGroup>
+    <FSharpTargetsPath>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets</FSharpTargetsPath>
+    <FSharpTargetsPath>$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets</FSharpTargetsPath>
+  </PropertyGroup>
+  <Import Project="$(FSharpTargetsPath)" Condition="Exists('$(FSharpTargetsPath)')" />
+  <ItemGroup>
+    <Reference Include='mscorlib' />
+    <Reference Include='System' />
+    <Reference Include='System.Core' />
+    <Reference Include='FSharp.Core' />
+    <Reference Include='System.Drawing' />
+    <Reference Include='packages/OpenTK/lib/NET40/OpenTK.dll' />
+    <Compile Include="base.fs" />
+    <Compile Include="opengl.fs" />
+    <Compile Include="castle.fs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,8 @@
+*.obj
+obj
+packages
+paket.lock
+.vscode
+*.exe
+*.dll
+*.png
