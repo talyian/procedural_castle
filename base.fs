@@ -222,3 +222,6 @@ module OBJ =
                 output.WriteLine("f {0} {1} {2}", faces.[i]+1, faces.[i+1]+1, faces.[i+2]+1)
         output.Flush()
         Seq.map fst colors |> Seq.groupBy id |> Seq.map fst |> Array.ofSeq
+
+let r = new Random()
+

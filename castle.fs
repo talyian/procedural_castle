@@ -1,4 +1,4 @@
-module ProcCastle.Main
+module ProcCastle.Gen
 
 open OpenTK
 open OpenTK.Graphics
@@ -7,7 +7,7 @@ open OpenTK.Graphics.OpenGL
 open System
 open ProcCastle.Base
 
-let r, xz = new Random(), Vector3(1.0f, 0.0f, 1.0f)
+let xz = Vector3(1.0f, 0.0f, 1.0f)
 
 let crenelate2 (dx,wx,h) block = [
     let col, pos, vol = match block with | Block(c, p, v) -> c, p, v | _ -> failwith "?"
@@ -29,6 +29,9 @@ let stack n ratio block = [
         vol.X <- vol.X * ratio
         vol.Z <- vol.Z * ratio
 ]
+
+
+
 
 module Columns =
     let dimensions = function | Block(c,a,b) -> a,b | _ -> failwith "x"
@@ -220,6 +223,7 @@ let castle seed = [
     let r = new Random(seed)
     [for i in 0..20 -> r.Next()] |> ignore
     let rdim () = r.NextV3(0.1f, 0.3f, 0.1f, 0.1f, 0.1f, 0.3f)
+    
     let spacehash = new SpatialHash(0.03f * Vector3.One)
     let mbuildings n =
         let make i = BoundingBox.FromBox(r.NextV3() * xz, 0.5f * rdim())
@@ -227,7 +231,6 @@ let castle seed = [
     let myard () = [BoundingBox.FromBox(Vector3.Zero, rdim() * 1.5f) |> spacehash.PlaceNearest]
     let courtyard = myard ()
     let buildings = mbuildings 5
-    let mm = r.Next(1, 4)
     let keeps2 = List.init (r.Next(1, 4)) (fun i -> placeKeep r (r.NextV3() * xz))
     let keeps = keeps2 |> List.map (fun prims -> prims
                                                  |> Seq.collect (Primitive.toVertices)
@@ -238,6 +241,12 @@ let castle seed = [
     let courtyard = courtyard @ myard ()
     let courtyard = courtyard @ myard () @ myard()        
     let buildings = mbuildings (r.Next (15, 50))
+    let trees = List.init 150 (fun i -> Trees.generate 3 |> Trees.toPolygon |> Seq.map (scale 0.1f >> offset (-1.f + 2.f * r.NextF()) 0.f (-1.f + 2.f * r.NextF())))
+    let trees2 = trees |> List.map (fun tree -> tree |> Seq.collect (Primitive.toVertices)
+                                                     |> Seq.map (fun v -> v.pos)
+                                                     |> BoundingBox.FromPoints
+                                                     |> spacehash.PlaceNearest)
+
     // Place external wall and towers on the convex hull of the internal structures
     let hull:Vector3 list =
         courtyard @ keeps @ buildings
@@ -255,11 +264,7 @@ let castle seed = [
     yield! keeps |> Seq.collect (fun k -> placeKeep r k.BottomCenter) // (k.Dimensions * 0.5f))
     yield! courtyard |> Seq.collect (fun k -> placeCourtyard r k.BottomCenter (k.Dimensions * 0.5f))
     yield! buildings |> Seq.collect (fun k -> placeHut r k.BottomCenter (k.Dimensions * 0.5f))
+    yield! trees |> Seq.concat
     yield Block(Color4.DarkGreen.Mult(0.3), Vector3(0.0f, -0.11f, 0.0f), Vector3(10.f, 0.01f, 10.f))
 ]
 
-[<EntryPoint>]
-let main args =
-    let r = new Random()
-    castle 4 |> ProcCastle.Renderer._display
-    0

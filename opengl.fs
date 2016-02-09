@@ -63,7 +63,7 @@ type Viewer (objects, w, h) =
         GL.Enable(EnableCap.Lighting)
         GL.Enable(EnableCap.Light0)
         GL.Light(LightName.Light0, LightParameter.Position, Vector4(200.0f, 100.0f, 100.0f, 0.0f))
-        GL.Light(LightName.Light0, LightParameter.Diffuse, Vector4.One * 2.0f)
+        GL.Light(LightName.Light0, LightParameter.Diffuse, Vector4.One * 1.0f)
         GL.Light(LightName.Light0, LightParameter.ConstantAttenuation, 0.3f)
     override this.OnRenderFrame e =
         GL.MatrixMode(MatrixMode.Projection)
@@ -83,8 +83,8 @@ type Viewer (objects, w, h) =
         this.SwapBuffers()
         if not (this.Rendered) then (this.ScreenShot()).Save(this.Title + ".png")
 
-let _display (o:Primitives list) = (new Viewer(o, 500, 500)).Run()
+let _display (o:Primitives list) = (new Viewer(o, 1200, 800)).Run()
 let _tempdisplay o t =
-    let v = new Viewer(o, 500, 500)
+    let v = new Viewer(o, 1200, 800)
     v.UpdateFrame.Add (fun e -> if v.GameTime > t then v.Close())
     v.Run()
