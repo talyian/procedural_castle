@@ -16,5 +16,6 @@
     <Compile Include="tree.fs" />
     <Compile Include="tower.fs" />
     <Compile Include="castle.fs" />
+    <Compile Include="main.fs" />
   </ItemGroup>
 </Project>
