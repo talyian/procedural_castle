@@ -15,11 +15,7 @@ let stack n ratio block = [
         yield Block(col, pos, vol)
         pos.Y <- pos.Y + vol.Y
         vol.X <- vol.X * ratio
-        vol.Z <- vol.Z * ratio
-]
-
-
-
+        vol.Z <- vol.Z * ratio ]
 
 module Columns =
     let dimensions = function | Block(c,a,b) -> a,b | _ -> failwith "x"
@@ -58,12 +54,13 @@ module Columns =
 // Place a wall between two points
 let placeWall (r:Random) h d (start,stop) = [
     let v = Vector3.Subtract(stop, start)
-    let p = Vector3(v.Length, h, d)
+    let trad = 0.08f * Towers.Options.radius
+    let p = Vector3(v.Length - trad, h, d/2.0f)
     let c = Color4.DarkSalmon.Mult (0.7 + r.NextDouble() * 0.3)
     let angle = atan2 v.Z v.X
-    yield (Offset(Matrix4.Identity, crenelate (boundedBlock c Vector3.Zero p))
+    yield (Offset(Matrix4.Identity, crenelate (boundedBlock c (Vector3(trad, 0.f, -d/2.0f)) p))
            |> matrix (Matrix4.CreateRotationY(-angle))
-           |> offset start.X start.Y start.Z)]
+           |> offset start.X start.Y start.Z) ]
 
 let placeTree (r:Random) (pos:Vector3) (vol:Vector3) = [Offset(Matrix4.CreateTranslation pos * Matrix4.CreateScale (0.2f * vol), Trees.create 4)]
 
@@ -73,12 +70,11 @@ let placeHut (r:Random) (pos:Vector3) (vol:Vector3) = [
     let color () = Color4.Brown.Mult(0.3).Add(Color4.Red.Mult(r.NextDouble()*0.3)).Add(Color4.Yellow.Mult(r.NextDouble()*0.3))
     let roof (pos:Vector3) (vol:Vector3) = Block((color()), pos + vol * Vector3.UnitY, vol * Vector3(1.0f, 0.1f, 1.0f)) |> stack 4 0.8f
     let body pos (vol:Vector3) = Block(Color4.Gray.Mult(0.3), pos, 0.95f * vol)
-    let beroof s = s |> Seq.collect (fun (p,v) -> [yield body p v; yield! roof p v])
+    let roof s = s |> Seq.collect (fun (p,v) -> [yield body p v; yield! roof p v])
     match r.Next(3) with
-    | 0 -> yield! beroof [pos, 0.7f * vol; pos + Vector3(1.0f, 0.f, 0.f) * vol, vol * 0.5f]
-    | 1 -> yield! beroof [pos, vol; pos + Vector3(0.1f, 0.f, 1.f) * vol, vol * 0.4f]
-    | _ -> yield! beroof [pos, vol]
-]
+    | 0 -> yield! roof [pos, 0.7f * vol; pos + Vector3(1.0f, 0.f, 0.f) * vol, vol * 0.5f]
+    | 1 -> yield! roof [pos, vol; pos + Vector3(0.1f, 0.f, 1.f) * vol, vol * 0.4f]
+    | _ -> yield! roof [pos, vol] ]
 
 let placeKeep (r:Random) (pos:Vector3) = [
     let vol = r.NextV3(0.2f, 0.3f, 0.3f, 0.5f, 0.2f, 0.3f)
@@ -110,11 +106,13 @@ let placeKeep (r:Random) (pos:Vector3) = [
 ]
 
 let placeMoat (r:Random) (points:Vector3 list) = [
-    let noisy m f s = [for p:Vector3 in s -> p * (r.NextF(m, f))]
+    let noisy m f s = [for p:Vector3 in s -> p * (let v = r.NextF(m, f) in Vector3(v, 0.0f, v))]
     let subdivsmooth s = Seq1.pairwisec s |> Seq.collect (fun (a:Vector3,b:Vector3) -> [(2.0f*a+b)*0.33f; (a + 2.0f*b) * 0.33f]) |> Seq.toList
-    let points2 = points |> noisy 1.1f 1.3f |> subdivsmooth |> noisy 1.0f 1.1f |> subdivsmooth  |> subdivsmooth |> List.map ((+) (Vector3(0.f, -0.09f, 0.f)))
+    let pp = points |> noisy 1.1f 1.3f |> subdivsmooth
+    let points2 = pp |> noisy 1.0f 1.1f |> subdivsmooth  |> subdivsmooth |> List.map ((+) (Vector3(0.f, -0.09f, 0.f)))
     let points3 = points |> noisy 1.4f 1.6f |> subdivsmooth |> noisy 1.f 1.3f |> subdivsmooth  |> subdivsmooth |> List.map ((+) (Vector3(0.f, -0.09f, 0.f)))
-    yield Bridged(Color4.DarkGreen, points, points2)
+    yield Bridged(Color4.DarkGreen, [for p in pp -> Seq.minBy (fun q -> (p - q).Length) points], pp)
+    yield Bridged(Color4.DarkGreen, [for p in points2 -> Seq.minBy (fun q -> (p - q).Length) pp], points2)
     yield Bridged(Color4.DarkBlue, points2, points3)
 ]
 

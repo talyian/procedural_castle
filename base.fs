@@ -62,10 +62,9 @@ module Primitive =
             ]
         | Bridged(col, pts1, pts2) ->
             [ for (a,b),(c,d) in Seq.zip (Seq1.pairwisec pts1) (Seq1.pairwisec pts2) do
-                assert (Vector3.Dot(b-a, c-a) < 0.01f)
-                let nor = Vector3.Cross(b-a, c-a).Normalized()
-                yield! [col,a,nor;col,b,nor;col,c,nor;
-                        col,b,nor;col,c,nor;col,d,nor]
+              let nor = if ((b:Vector3) - a).Length < 0.0001f then Vector3.UnitY else Vector3.Cross(b-a, c-a)
+              yield! [col,a,nor;col,b,nor;col,c,nor;
+                      col,b,nor;col,c,nor;col,d,nor]
             ]
         | RidgedCylinder(col, pos, r, h) ->
             let ratio = 0.3f
