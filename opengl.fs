@@ -63,7 +63,7 @@ type Viewer (objects, w, h) =
         GL.Enable(EnableCap.Lighting)
         GL.Enable(EnableCap.Light0)
         GL.Light(LightName.Light0, LightParameter.Position, Vector4(200.0f, 100.0f, 100.0f, 0.0f))
-        GL.Light(LightName.Light0, LightParameter.Diffuse, Vector4.One * 1.0f)
+        GL.Light(LightName.Light0, LightParameter.Diffuse, Vector4.One * 2.0f)
         GL.Light(LightName.Light0, LightParameter.ConstantAttenuation, 0.3f)
     override this.OnRenderFrame e =
         GL.MatrixMode(MatrixMode.Projection)

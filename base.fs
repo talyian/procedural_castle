@@ -18,6 +18,7 @@ type Primitives =
     | Bridged of Color4 * Vector3 list * Vector3 list
     | RidgedCylinder of Color4 * Vector3 * float32 * float32
     | Cylinder of Color4 * Vector3 * float32 * float32 * float32
+    | NCylinder of Color4 * Vector3 * int * float32 * float32 * float32
     | Polygon of (Color4 * Vector3 * Vector3) list
     | Offset of Matrix4 * Primitives list
 
@@ -32,7 +33,8 @@ end
 module Primitive =
     let ngon n = [
         let pipi = 6.28318f
-        for angle in 0.0f .. pipi / float32 n .. pipi do
+        for angle in 0.0f .. 1.0f/float32 n .. 1.0f do
+            let angle = 6.24318f * (angle  + 0.5f / float32 n)
             yield Vector3(sin angle, 0.0f, cos angle) ]
 
     let rec toPolygons = function
@@ -54,15 +56,14 @@ module Primitive =
         | Sphere(c, pos, dim) -> toPolygons (Block(c, pos, Vector3(dim, dim, dim)))
         | Extruded(col, pts, vec) ->
             [  for a, b in Seq1.pairwisec pts do
-               let nor = Vector3.Cross(b-a, vec)
+               let nor = Vector3.Cross(b-a, vec).Normalized()
                yield! [col, a, nor;col, b, nor; col, a + vec, nor;
                       col, b, nor;col, a + vec, nor;col, b + vec, nor ]
             ]
         | Bridged(col, pts1, pts2) ->
             [ for (a,b),(c,d) in Seq.zip (Seq1.pairwisec pts1) (Seq1.pairwisec pts2) do
                 assert (Vector3.Dot(b-a, c-a) < 0.01f)
-                let nor = Vector3.Cross(b-a, c-a)
-                let nor = Vector3.UnitZ
+                let nor = Vector3.Cross(b-a, c-a).Normalized()
                 yield! [col,a,nor;col,b,nor;col,c,nor;
                         col,b,nor;col,c,nor;col,d,nor]
             ]
@@ -70,9 +71,10 @@ module Primitive =
             let ratio = 0.3f
             let pts = [for i,a in List.indexed (ngon 20) -> pos + r * a * (0.8f + ratio * float32 (i % 2))]
             toPolygons (Extruded(col, pts, Vector3(0.f, h, 0.f)))
-        | Cylinder(col, pos, r1, r2, h) ->
-            let pts = [for p in ngon 8 -> pos + p * r1]
-            let pts2 = [for p in ngon 8 -> pos + p * r2 + Vector3(0.f, h, 0.f)]
+        | Cylinder(col, pos, r1, r2, h) -> toPolygons(NCylinder(col, pos, 8, r1, r2, h))
+        | NCylinder(col, pos, n, r1, r2, h) ->
+            let pts = [for p in ngon n -> pos + p * r1]
+            let pts2 = [for p in ngon n -> pos + p * r2 + Vector3(0.f, h, 0.f)]
             [   let nor = -Vector3.UnitY
                 yield! [for a,b in Seq1.pairwisec pts do yield! [col,a,nor;col,b,nor;col,pts.[0],nor]]
                 yield! toPolygons (Bridged(col, pts, pts2))
@@ -84,7 +86,7 @@ module Primitive =
         | Offset(matrix, p) ->[ for p in p do
                                 for c, v, n in toPolygons p ->
                                   c, Vector3.Transform(v, matrix),
-                                  Vector3.TransformNormal(n, matrix) ]
+                                  Vector3.TransformNormal(n.Normalized(), matrix) ]
 
     let rec toVertices x = [| for c,v,n in toPolygons x -> new Vertex(col=c,pos=v,nor=n) |]
 
@@ -104,6 +106,7 @@ type System.Random with
     member this.NextF (min, max) = float32 (this.NextDouble ()) * (max - min) + min
     member this.NextV3 () = Vector3(this.NextF(), this.NextF(), this.NextF())
     member this.NextV3 (xmin, xmax, ymin, ymax, zmin, zmax) = Vector3(this.NextF(xmin, xmax), this.NextF(ymin, ymax), this.NextF(zmin, zmax))
+    member this.NextEnum<'T>() = let a = Enum.GetValues(typeof<'T>) in a.GetValue(this.Next() % a.Length) :?> 'T
 
 type ConvexHull () =
     static member FromPoints (pts:Vector3 list) =
@@ -223,5 +226,19 @@ module OBJ =
         output.Flush()
         Seq.map fst colors |> Seq.groupBy id |> Seq.map fst |> Array.ofSeq
 
-let r = new Random()
+    let writeFile str prims =
+        use a = IO.StreamWriter(str + ".obj")
+        use b = IO.StreamWriter(str + ".mtl")
+        write a prims |> writecolors b
 
+let r = new Random()
+let crenelate2 (dx,wx,h) block = [
+    let col, pos, vol = match block with | Block(c, p, v) -> c, p, v | _ -> failwith "?"
+    yield Block(col, pos, vol)
+    for u,v in [for v in [pos.Z - vol.Z; pos.Z + vol.Z] do
+                for u in pos.X - vol.X + wx .. dx .. (pos.X + vol.X - wx) -> u, v] @
+               [for u in [pos.X - vol.X; pos.X + vol.X] do
+                for v in pos.Z - vol.Z + wx .. dx .. (pos.Z + vol.Z - wx) -> u, v] do
+        yield Block(col, Vector3(u, pos.Y + vol.Y, v), Vector3(wx, h, wx))
+]
+let crenelate = crenelate2 (0.06f, 0.018f, 0.03f)
