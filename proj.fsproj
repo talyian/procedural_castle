@@ -10,7 +10,7 @@
     <Reference Include='System.Core' />
     <Reference Include='FSharp.Core' />
     <Reference Include='System.Drawing' />
-    <Reference Include='packages/OpenTK/lib/NET40/OpenTK.dll' />
+    <Reference Include='packages/OpenTK/lib/net20/OpenTK.dll' />
     <Compile Include="base.fs" />
     <Compile Include="opengl.fs" />
     <Compile Include="tree.fs" />

@@ -168,7 +168,7 @@ let castle seed = [
     let style = r.Next(3)
     let capColor = Color4.Aquamarine.Mult(0.5).Add(Color4.Blue.Mult(r.NextDouble() * 0.9)).Add(Color4.Green.Mult(r.NextDouble() * 0.9))
     let capColor = capColor.Mult(0.7)
-    yield! towers |> Seq.map (fun x -> Offset(Matrix4.CreateTranslation x, Towers.create 4))
+    yield! towers |> Seq.map (fun x -> Offset(Matrix4.CreateTranslation x, Towers.create ()))
     yield! Seq.collect (placeWall r 0.45f 0.1f) (Seq1.pairwisec towers)
     yield! keeps |> Seq.collect (fun k -> placeKeep r k.BottomCenter) // (k.Dimensions * 0.5f))
     yield! courtyard |> Seq.collect (fun k -> placeCourtyard r k.BottomCenter (k.Dimensions * 0.5f))

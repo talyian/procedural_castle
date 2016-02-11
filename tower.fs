@@ -20,14 +20,6 @@ type Tower =
     | Foundation of Tower
     | Buttress of Tower * Tower list
 
-let generateSegments num =
-    let rec f pos lst = function
-        | 0 -> lst
-        | n -> let dim = Vector3.One
-               let block = TowerSegment.Segment(num, n, Window)
-               f (pos + dim * Vector3.UnitY) (block::lst) (n-1)
-    f Vector3.Zero []
-
 module Options =
     let mutable sides = 3
     let mutable radius = 0.1f
@@ -84,7 +76,10 @@ let toPolySegments (pos:Vector3) =
               for angle in 0..n-1 do
                   let points = [for i in 0.2f - width .. 0.4f .. width -> Block(col, pos + V3(i, 1.2f, 1.4f), V3(0.15f, 0.25f, 0.1f))]
                   yield Offset(Matrix4.CreateRotationY(6.2832f * float32 angle / float32 n), points) ]
-        else flag (pos + V3(0.f, (float32 (outline.Length) / 3.f), 0.f)) @ [for i, (r1,r2) in Seq.indexed outline -> NCylinder(Options.color2, pos + Vector3(0.f, float32 i / 3.f, 0.f), n, 0.6f * r1, 0.6f * r2, 0.3333f)]
+        else
+            let spire = [for i, (r1,r2) in Seq.indexed outline ->
+                           NCylinder(Options.color2, pos + Vector3(0.f, float32 i / 3.f, 0.f), n, 0.6f * r1, 0.6f * r2, 0.3333f)]
+            flag (pos + V3(0.f, (float32 (outline.Length) / 3.f), 0.f)) @ spire
     | Segment(n, h, style) -> makepoly n h style
 
 let rec toPolygons =
@@ -106,13 +101,18 @@ let rec toPolygons =
           Offset(Matrix4.CreateScale(1.5f, 2.0f, 1.5f), (Block(col, Vector3.Zero, Vector3.One) |> Base.crenelate2 (0.2f, 0.07f, 0.2f))) :: []
 
 
-let rec create foobar =
+
+let generateSegments num =
+    let rec f pos lst = function
+        | 0 -> lst
+        | n -> let block = TowerSegment.Segment(num, n, Window)
+               f (pos + Vector3.UnitY) (block::lst) (n-1)
+    f Vector3.Zero []
+
+let rec create () =
     let stories = r.Next(4, 8)
     let segments = generateSegments (Options.sides) stories
-    let tower = match r.Next(3) with
-        | 20 -> Tiered(segments)
-        | 10 -> Normal(segments)
-        | _ -> Capped(segments, Options.topstyle ())
+    let tower = Capped(segments, Options.topstyle ())
     let tower = match r.Next(4) with
         | 0 -> Buttress(tower, [Capped(generateSegments 4 3, SpireStyle.ConeNoFlag)])
         | 1 -> Foundation(tower)

@@ -107,14 +107,12 @@ type System.Random with
     member this.NextV3 (xmin, xmax, ymin, ymax, zmin, zmax) = Vector3(this.NextF(xmin, xmax), this.NextF(ymin, ymax), this.NextF(zmin, zmax))
     member this.NextEnum<'T>() = let a = Enum.GetValues(typeof<'T>) in a.GetValue(this.Next() % a.Length) :?> 'T
 
-type ConvexHull () =
-    static member FromPoints (pts:Vector3 list) =
-        let mutable firstpt = pts |> Seq.minBy (fun v -> v.X)
-        let inline turn (a:Vector3) (b:Vector3) (c:Vector3) = (b.X - a.X) * (c.Z - a.Z) - (c.X - a.X) * (b.Z - a.Z)
+module ConvexHull =
+    let FromPoints pts =
+        let firstpt = List.minBy (fun (v:Vector3) -> v.X) pts
         let nextpt pt =
-            List.filter ((<>) pt) pts
-            |> List.reduce (fun p q -> if turn pt p q < 0.0f then q else p)
-        firstpt :: List.unfold (fun p -> if p = firstpt then None else Some(p, nextpt p)) (nextpt firstpt)
+            List.except [pt] pts |> List.reduce (fun p q -> if Matrix2(p.Xz-pt.Xz,q.Xz-pt.Xz).Determinant < 0.0f then q else p)
+        List.unfold (fun p -> let n = nextpt p in if n = firstpt then None else Some(p, n)) firstpt
 
 [<Struct>]
 type BoundingBox (min: Vector3, max: Vector3, b:bool) =
@@ -173,35 +171,32 @@ type SpatialHash (blocksize:Vector3) =
     }
 
     member this.Occupied (bb:BoundingBox) =
-        let mutable n, m = bb.Minimum, bb.Maximum
-        n.Y <- 0.f
-        m.Y <- 0.f
+        let n, m = bb.Minimum.Xz, bb.Maximum.Xz
         let rec loopX x y z =
             if x > m.X / dx + 0.999f then loopX (floor(n.X / dx)) (y + 1.0f) z
-            elif y > m.Y / dy + 0.999f then loopX x (floor (n.Y / dy)) (z + 1.0f)
-            elif z > m.Z / dz + 0.999f then false
+            elif y > 0.999f then loopX x 0.f (z + 1.0f)
+            elif z > m.Y / dz + 0.999f then false
             elif sectors.ContainsKey (Vector3(dx * x,dy * y,dz * z)) then true
             else loopX (x + 1.0f) y z
-        loopX (floor(n.X/dx)) (floor(n.Y/dy)) (floor(n.Z/dz))
+        loopX (floor(n.X/dx)) 0.f (floor(n.Y/dz))
 
     member this.Put (bb:BoundingBox) =
         for s in this.GetSectors bb do
             match sectors.TryGetValue(s) with
                 | false, _ -> sectors.[s] <- 1
                 | true, x -> sectors.[s] <- sectors.[s] + 1
-
     member this.PlaceNearest (bb:BoundingBox) =
-        let pos = bb.Minimum
         let candidates = seq {
             for radius in Seq.initInfinite id do
             for x in -radius .. radius do
             for z in [radius - abs x;abs x - radius] do
-            yield Vector3(pos.X + dx * float32 x, pos.Y, pos.Z + dz * float32 z) }
+            yield bb.Minimum + Vector3(dx * float32 x, 0.f, dz * float32 z) }
         let tryPlace p =
             let _bb = BoundingBox(p, p + bb.Dimensions)
             if this.Occupied _bb then None
             else this.Put _bb; Some(_bb)
         Seq.pick tryPlace candidates
+
 
 module OBJ =
     let writecolors (output:System.IO.TextWriter) (colors:seq<Color4>) =

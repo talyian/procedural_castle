@@ -12,7 +12,6 @@ let rec generate = function
     | n -> let pos = 0.6f * Vector3.Normalize (r.NextV3(-0.5f, 0.5f, 0.2f, 0.6f, -0.5f, 0.5f))
            Branch(pos, 0.03f * float32 n, [for i in 0..(if n = 1 then 1 else r.Next(2, 6)) -> r.NextF(0.2f, 1.0f), generate (n-1)])
 
-let ratio n = function | Leaf(n) -> 1.0f | _ -> n
 let rec private _toPolygon (mat:Matrix4) = function
     | Leaf(dim) -> [ Offset(mat, [Block(Color4.DarkGreen, Vector3.Zero, dim) ])]
     | Branch(vec, width, children) ->
